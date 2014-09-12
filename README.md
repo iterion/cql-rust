@@ -8,10 +8,10 @@ The design of [rust-postgres](https://github.com/sfackler/rust-postgres) also in
 
 # To Do
 
-* [-] TCP Connection
+* [ ] TCP Connection
     * [x] Without Authentication
     * [ ] With Authentication
-* [-] Querying
+* [ ] Querying
     * [x] Execute Queries
     * [ ] Retrieve result rows
 * [x] Error Responses
