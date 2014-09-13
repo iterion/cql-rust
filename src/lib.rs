@@ -87,14 +87,15 @@ fn connect_and_query() {
     user_id varchar PRIMARY KEY,
     first varchar,
     last varchar,
-    age int
+    age int,
+    height float
     )".to_string();
 
   let result = client.query(query, message::Quorum);
   println!("Result of CREATE TABLE was {}", result);
 
-  let query = "INSERT INTO users (user_id, first, last, age)
-               VALUES ('jsmith', 'John', 'Smith', 42);".to_string();
+  let query = "INSERT INTO users (user_id, first, last, age, height)
+               VALUES ('jsmith', 'John', 'Smith', 42, 12.1);".to_string();
   let result = client.query(query, message::Quorum);
   println!("Result of INSERT was {}", result);
 

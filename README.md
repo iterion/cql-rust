@@ -11,9 +11,9 @@ The design of [rust-postgres](https://github.com/sfackler/rust-postgres) also in
 * [ ] TCP Connection
     * [x] Without Authentication
     * [ ] With Authentication
-* [ ] Querying
+* [x] Querying
     * [x] Execute Queries
-    * [ ] Retrieve result rows
+    * [x] Retrieve result rows
 * [x] Error Responses
 * [ ] Request/Response Compression
 * [ ] A lot more...

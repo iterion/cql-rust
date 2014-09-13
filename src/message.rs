@@ -1,5 +1,6 @@
 use std::collections;
 use std::io::{Writer, MemWriter, MemReader, IoResult};
+use std::collections::HashMap;
 use std::result::{Ok, Err};
 
 pub static CQL_VERSION:u8 = 0x02;
@@ -52,12 +53,54 @@ pub enum Response {
 #[deriving(Show)]
 pub enum ResultBody {
   Void,
-  Rows,
+  Rows(Vec<Row>),
   SetKeyspace(String),
   Prepared,
   SchemaChange(String, String, String)
 }
 
+#[deriving(Show)]
+pub struct ColumnSpec {
+  name: String,
+  col_type: u16//ColumnType
+}
+
+#[deriving(Show)]
+pub struct Row {
+  columns: HashMap<String, Column>
+}
+
+pub enum ColumnType {
+  Custom = 0,
+  Ascii = 1,
+  Bigint = 2,
+  Blob = 3,
+  Boolean = 4,
+  Counter = 5,
+  Decimal = 6,
+  Double = 7,
+  Float = 8,
+  Int = 9,
+  Text = 10,
+  Timestamp = 11,
+  Uuid = 12,
+  Varchar = 13,
+  Varint = 14,
+  Timeuuid = 15,
+  Inet = 16,
+  List = 17,
+  Map = 18,
+  Set = 19
+}
+
+#[deriving(Show)]
+pub enum Column {
+  CqlString(String),
+  CqlInt(i32),
+  CqlLong(i64),
+  CqlFloat(f32),
+  CqlDouble(f64)
+}
 #[doc(hidden)]
 pub trait WriteMessage {
   fn write_message(&mut self, &Request) -> IoResult<()>;
@@ -159,7 +202,62 @@ fn read_result(buf: &mut MemReader) -> IoResult<Response> {
 
   let body = match result_type {
     2 => {
-      Rows
+      let flags = try!(buf.read_be_u32());
+      let column_count = try!(buf.read_be_u32());
+      //assume global column spec
+      let len = try!(buf.read_be_u16());
+      let string_bytes = try!(buf.read_exact(len as uint));
+      let keyspace = String::from_utf8(string_bytes).unwrap();
+
+      let len = try!(buf.read_be_u16());
+      let string_bytes = try!(buf.read_exact(len as uint));
+      let table = String::from_utf8(string_bytes).unwrap();
+
+      println!("The flags are {}, and column count is {}", flags, column_count);
+      println!("The keyspace is {}, and table is {}", keyspace, table);
+
+      let mut column_specs = vec!();
+
+      for _ in range(0, column_count) {
+        let len = try!(buf.read_be_u16());
+        let string_bytes = try!(buf.read_exact(len as uint));
+        let name = String::from_utf8(string_bytes).unwrap();
+        let col_type = try!(buf.read_be_u16());
+        let spec = ColumnSpec { name: name, col_type: col_type };
+        println!("Found spec: {}", spec);
+        column_specs.push(spec);
+      }
+
+      let row_count = try!(buf.read_be_u32());
+      let mut rows = vec!();
+      println!("Row count: {}", row_count);
+
+      for _ in range(0, row_count) {
+        let mut columns = HashMap::new();
+        for col_spec in column_specs.iter() {
+          let len = try!(buf.read_be_u32());
+          println!("num of bytes for col is {}", len);
+          let col_val = match col_spec.col_type {
+            8 => {
+              let val = try!(buf.read_be_f32());
+              CqlFloat(val)
+            }
+            9 => {
+              let val = try!(buf.read_be_i32());
+              CqlInt(val)
+            },
+            _ => {
+              let val_bytes = try!(buf.read_exact(len as uint));
+              let name = String::from_utf8(val_bytes).unwrap();
+              CqlString(name)
+            }
+          };
+          println!("Found col_val: {}", col_val);
+          columns.insert(col_spec.name.clone(), col_val);
+        }
+        rows.push(Row { columns: columns});
+      }
+      Rows(rows)
     },
     3 => {
       let len = try!(buf.read_be_u16());
