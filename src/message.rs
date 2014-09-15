@@ -17,9 +17,7 @@ pub enum Consistency {
   UnknownConsistency,
 }
 
-
-
-pub type CqlHashMap = collections::HashMap<String, String>;
+pub type CqlHashMap = HashMap<String, String>;
 
 pub enum Request {
   Startup(CqlHashMap),
@@ -127,13 +125,13 @@ impl<W: Writer> WriteMessage for W {
           try!(buf.write_be_u16(val.len() as u16));
           try!(buf.write_str(val.as_slice()));
         }
-      }
+      },
       Query(ref query, consistency) => {
         try!(buf.write_be_u32(query.len() as u32));
         try!(buf.write_str(query.as_slice()));
         try!(buf.write_be_u16(consistency as u16));
         try!(buf.write_u8(0u as u8));
-      }
+      },
       _ => ()
     }
 
