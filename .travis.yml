@@ -1,0 +1,5 @@
+language: rust
+services:
+  - cassandra
+script:
+  - cargo test -- --nocapture
