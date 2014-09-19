@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/iterion/cql-rust.svg)](https://travis-ci.org/iterion/cql-rust)
+
 # Rust CQL Client
 
 Currently using version 2 of the CQL native protocol.
