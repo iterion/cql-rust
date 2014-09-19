@@ -1,4 +1,3 @@
-use std::collections;
 use std::io::{Writer, MemWriter, MemReader, IoResult};
 use std::collections::HashMap;
 use std::result::{Ok, Err};
