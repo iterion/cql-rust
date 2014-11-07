@@ -32,16 +32,16 @@ impl Client {
 }
 
 
-pub fn connect(ip: String, port: u16) -> io::IoResult<Client> {
+pub fn connect(addr: String) -> io::IoResult<Client> {
 
-  let stream = try!(io::TcpStream::connect(ip.as_slice(), port));
+  let stream = try!(io::TcpStream::connect(addr.as_slice()));
 
   let startup_msg = startup_request();
   let mut buf = io::BufferedStream::new(stream);
   try!(buf.write_message(&startup_msg));
   try!(buf.flush());
 
-  let msg = buf.read_message().unwrap();
+  let msg = try!(buf.read_message());
   match msg {
     message::Ready => {
       println!("No auth required by server - moving on");
@@ -67,7 +67,7 @@ pub fn connect(ip: String, port: u16) -> io::IoResult<Client> {
 
 #[test]
 fn connect_and_query() {
-  let mut client = connect("127.0.0.1".to_string(), 9042).unwrap();
+  let mut client = connect("127.0.0.1:9042".to_string()).unwrap();
 
   let result = client.query("DROP KEYSPACE IF EXISTS testing".to_string(), message::Quorum);
   println!("Result of DROP KEYSPACE was {}", result);
