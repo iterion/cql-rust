@@ -1,11 +1,9 @@
 use std::{io, result, collections};
 use message::{WriteMessage,
               ReadMessage,
-              Startup,
               Request,
-              Response,
-              Query
-              };
+              Consistency,
+              Response};
 use std::io::{IoResult};
 
 pub mod message;
@@ -14,7 +12,7 @@ fn startup_request() -> Request {
   let mut body = collections::HashMap::new();
   body.insert("CQL_VERSION".to_string(), "3.0.0".to_string());
 
-  Startup(body)
+  Request::Startup(body)
 }
 
 pub struct Client {
@@ -23,7 +21,7 @@ pub struct Client {
 
 impl Client {
   pub fn query(&mut self, query: String, consistency: message::Consistency) -> IoResult<Response> {
-    let query = Query(query, consistency);
+    let query = Request::Query(query, consistency);
     try!(self.buf.write_message(&query));
     try!(self.buf.flush());
 
@@ -43,12 +41,12 @@ pub fn connect(addr: String) -> io::IoResult<Client> {
 
   let msg = try!(buf.read_message());
   match msg {
-    message::Ready => {
+    Response::Ready => {
       println!("No auth required by server - moving on");
       let cli = Client { buf: buf };
       result::Ok(cli)
     },
-    message::Authenticate(_) => {
+    Response::Authenticate(_) => {
       println!("Auth required - sending credentials - maybe");
       let cli = Client { buf: buf };
       result::Ok(cli)
@@ -69,7 +67,7 @@ pub fn connect(addr: String) -> io::IoResult<Client> {
 fn connect_and_query() {
   let mut client = connect("127.0.0.1:9042".to_string()).unwrap();
 
-  let result = client.query("DROP KEYSPACE IF EXISTS testing".to_string(), message::Quorum);
+  let result = client.query("DROP KEYSPACE IF EXISTS testing".to_string(), Consistency::Quorum);
   println!("Result of DROP KEYSPACE was {}", result);
 
   let query = "CREATE KEYSPACE testing
@@ -77,10 +75,10 @@ fn connect_and_query() {
                  'class' : 'SimpleStrategy',
                  'replication_factor' : 1
                }".to_string();
-  let result = client.query(query, message::Quorum);
+  let result = client.query(query, Consistency::Quorum);
   println!("Result of CREATE KEYSPACE was {}", result);
 
-  let result = client.query("USE testing".to_string(), message::Quorum);
+  let result = client.query("USE testing".to_string(), Consistency::Quorum);
   println!("Result of USE was {}", result);
 
   let query = "CREATE TABLE users (
@@ -91,14 +89,14 @@ fn connect_and_query() {
     height float
     )".to_string();
 
-  let result = client.query(query, message::Quorum);
+  let result = client.query(query, Consistency::Quorum);
   println!("Result of CREATE TABLE was {}", result);
 
   let query = "INSERT INTO users (user_id, first, last, age, height)
                VALUES ('jsmith', 'John', 'Smith', 42, 12.1);".to_string();
-  let result = client.query(query, message::Quorum);
+  let result = client.query(query, Consistency::Quorum);
   println!("Result of INSERT was {}", result);
 
-  let result = client.query("SELECT * FROM users".to_string(), message::Quorum);
+  let result = client.query("SELECT * FROM users".to_string(), Consistency::Quorum);
   println!("Result of SELECT was {}", result);
 }

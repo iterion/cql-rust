@@ -13,7 +13,7 @@ pub enum Consistency {
   All = 0x0005,
   LocalQuorum = 0x0006,
   EachQuorum = 0x0007,
-  UnknownConsistency,
+  Unknown,
 }
 
 pub type CqlHashMap = HashMap<String, String>;
@@ -28,10 +28,10 @@ pub enum Request {
 impl Request {
   pub fn opcode(&self) -> u8 {
     match *self {
-      Startup(_) => 0x01,
-      Credential(_) => 0x04,
-      Options => 0x05,
-      Query(_, _) => 0x07
+      Request::Startup(_) => 0x01,
+      Request::Credential(_) => 0x04,
+      Request::Options => 0x05,
+      Request::Query(_, _) => 0x07
     }
   }
 }
@@ -98,6 +98,7 @@ pub enum Column {
   CqlFloat(f32),
   CqlDouble(f64)
 }
+
 #[doc(hidden)]
 pub trait WriteMessage {
   fn write_message(&mut self, &Request) -> IoResult<()>;
@@ -115,7 +116,7 @@ impl<W: Writer> WriteMessage for W {
     let mut buf = MemWriter::new();
 
     match *message {
-      Startup(ref hash_map) => {
+      Request::Startup(ref hash_map) => {
         // try!(body.write(hash_map.as_cql_binary()));
         try!(buf.write_be_u16(hash_map.len() as u16));
         for (key, val) in hash_map.iter() {
@@ -125,7 +126,7 @@ impl<W: Writer> WriteMessage for W {
           try!(buf.write_str(val.as_slice()));
         }
       },
-      Query(ref query, consistency) => {
+      Request::Query(ref query, consistency) => {
         try!(buf.write_be_u32(query.len() as u32));
         try!(buf.write_str(query.as_slice()));
         try!(buf.write_be_u16(consistency as u16));
@@ -162,11 +163,11 @@ impl<R: Reader> ReadMessage for R {
 
     let ret = match opcode {
       0 => try!(read_error_response(&mut buf)),
-      2 => Ready,
-      3 => Authenticate("test".to_string()),
-      6 => Supported,
+      2 => Response::Ready,
+      3 => Response::Authenticate("test".to_string()),
+      6 => Response::Supported,
       8 => try!(read_result(&mut buf)),
-      _ => Empty
+      _ => Response::Empty
     };
 
     Ok(ret)
@@ -189,8 +190,8 @@ fn read_error_response(buf: &mut MemReader) -> IoResult<Response> {
   let string_bytes = try!(buf.read_exact(len as uint));
   let res = String::from_utf8(string_bytes);
   Ok(match res {
-    Ok(string) => Error(code, string),
-    Err(_) => Error(code, "couldn't parse".to_string())
+    Ok(string) => Response::Error(code, string),
+    Err(_) => Response::Error(code, "couldn't parse".to_string())
   })
 }
 
@@ -237,16 +238,16 @@ fn read_result(buf: &mut MemReader) -> IoResult<Response> {
           let col_val = match col_spec.col_type {
             8 => {
               let val = try!(buf.read_be_f32());
-              CqlFloat(val)
+              Column::CqlFloat(val)
             }
             9 => {
               let val = try!(buf.read_be_i32());
-              CqlInt(val)
+              Column::CqlInt(val)
             },
             _ => {
               let val_bytes = try!(buf.read_exact(len as uint));
               let name = String::from_utf8(val_bytes).unwrap();
-              CqlString(name)
+              Column::CqlString(name)
             }
           };
           println!("Found col_val: {}", col_val);
@@ -254,15 +255,15 @@ fn read_result(buf: &mut MemReader) -> IoResult<Response> {
         }
         rows.push(Row { columns: columns});
       }
-      Rows(rows)
+      ResultBody::Rows(rows)
     },
     3 => {
       let len = try!(buf.read_be_u16());
       let string_bytes = try!(buf.read_exact(len as uint));
       let name = String::from_utf8(string_bytes).unwrap();
-      SetKeyspace(name)
+      ResultBody::SetKeyspace(name)
     },
-    4 => Prepared,
+    4 => ResultBody::Prepared,
     5 => {
       // dedup this - map over range?
       let len = try!(buf.read_be_u16());
@@ -276,10 +277,10 @@ fn read_result(buf: &mut MemReader) -> IoResult<Response> {
       let len = try!(buf.read_be_u16());
       let string_bytes = try!(buf.read_exact(len as uint));
       let table = String::from_utf8(string_bytes).unwrap();
-      SchemaChange(change, keyspace, table)
+      ResultBody::SchemaChange(change, keyspace, table)
     },
-    _ => Void,
+    _ => ResultBody::Void,
   };
 
-  Ok(Result(body))
+  Ok(Response::Result(body))
 }
