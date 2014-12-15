@@ -1,9 +1,10 @@
 use std::io::{Writer, MemWriter, MemReader, IoResult};
 use std::collections::HashMap;
-use std::result::{Ok, Err};
+use std::result::Result::{Ok, Err};
 
 pub static CQL_VERSION:u8 = 0x02;
 
+#[deriving(Clone, Copy)]
 pub enum Consistency {
   Any = 0x0000,
   One = 0x0001,
@@ -67,6 +68,7 @@ pub struct Row {
   columns: HashMap<String, Column>
 }
 
+#[deriving(Copy)]
 pub enum ColumnType {
   Custom = 0,
   Ascii = 1,
@@ -126,17 +128,17 @@ impl<W: Writer> WriteMessage for W {
           try!(buf.write_str(val.as_slice()));
         }
       },
-      Request::Query(ref query, consistency) => {
+      Request::Query(ref query, ref consistency) => {
         try!(buf.write_be_u32(query.len() as u32));
         try!(buf.write_str(query.as_slice()));
-        try!(buf.write_be_u16(consistency as u16));
+        try!(buf.write_be_u16((*consistency).clone() as u16));
         try!(buf.write_u8(0u as u8));
       },
       _ => ()
     }
 
-    let header = header.unwrap();
-    let buf = buf.unwrap();
+    let header = header.into_inner();
+    let buf = buf.into_inner();
 
     try!(self.write(header.as_slice()));
     try!(self.write_be_u32(buf.len() as u32));

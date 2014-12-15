@@ -1,4 +1,5 @@
-use std::{io, result, collections};
+use std::{io, collections};
+use std::result::Result;
 use message::{WriteMessage,
               ReadMessage,
               Request,
@@ -44,12 +45,12 @@ pub fn connect(addr: String) -> io::IoResult<Client> {
     Response::Ready => {
       println!("No auth required by server - moving on");
       let cli = Client { buf: buf };
-      result::Ok(cli)
+      Result::Ok(cli)
     },
     Response::Authenticate(_) => {
       println!("Auth required - sending credentials - maybe");
       let cli = Client { buf: buf };
-      result::Ok(cli)
+      Result::Ok(cli)
     },
     _ => {
       println!("Bad response - response was {}", msg);
