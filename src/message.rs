@@ -4,7 +4,7 @@ use std::result::Result::{Ok, Err};
 
 pub static CQL_VERSION:u8 = 0x02;
 
-#[deriving(Clone, Copy)]
+#[derive(Clone, Copy)]
 pub enum Consistency {
   Any = 0x0000,
   One = 0x0001,
@@ -37,7 +37,7 @@ impl Request {
   }
 }
 
-#[deriving(Show)]
+#[derive(Show)]
 pub enum Response {
   Error(u32, String),
   Ready,
@@ -48,7 +48,7 @@ pub enum Response {
   Empty
 }
 
-#[deriving(Show)]
+#[derive(Show)]
 pub enum ResultBody {
   Void,
   Rows(Vec<Row>),
@@ -57,18 +57,18 @@ pub enum ResultBody {
   SchemaChange(String, String, String)
 }
 
-#[deriving(Show)]
+#[derive(Show)]
 pub struct ColumnSpec {
   name: String,
   col_type: u16//ColumnType
 }
 
-#[deriving(Show)]
+#[derive(Show)]
 pub struct Row {
   columns: HashMap<String, Column>
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum ColumnType {
   Custom = 0,
   Ascii = 1,
@@ -92,7 +92,7 @@ pub enum ColumnType {
   Set = 19
 }
 
-#[deriving(Show)]
+#[derive(Show)]
 pub enum Column {
   CqlString(String),
   CqlInt(i32),
@@ -132,7 +132,7 @@ impl<W: Writer> WriteMessage for W {
         try!(buf.write_be_u32(query.len() as u32));
         try!(buf.write_str(query.as_slice()));
         try!(buf.write_be_u16((*consistency).clone() as u16));
-        try!(buf.write_u8(0u as u8));
+        try!(buf.write_u8(0 as u8));
       },
       _ => ()
     }
@@ -161,7 +161,7 @@ impl<R: Reader> ReadMessage for R {
     let opcode = try!(self.read_u8());
     let len = try!(self.read_be_u32());
 
-    let mut buf = MemReader::new(try!(self.read_exact(len as uint)));
+    let mut buf = MemReader::new(try!(self.read_exact(len as usize)));
 
     let ret = match opcode {
       0 => try!(read_error_response(&mut buf)),
@@ -189,7 +189,7 @@ impl<R: Reader> ReadMessage for R {
 fn read_error_response(buf: &mut MemReader) -> IoResult<Response> {
   let code = try!(buf.read_be_u32());
   let len = try!(buf.read_be_u16());
-  let string_bytes = try!(buf.read_exact(len as uint));
+  let string_bytes = try!(buf.read_exact(len as usize));
   let res = String::from_utf8(string_bytes);
   Ok(match res {
     Ok(string) => Response::Error(code, string),
@@ -206,11 +206,11 @@ fn read_result(buf: &mut MemReader) -> IoResult<Response> {
       let column_count = try!(buf.read_be_u32());
       //assume global column spec
       let len = try!(buf.read_be_u16());
-      let string_bytes = try!(buf.read_exact(len as uint));
+      let string_bytes = try!(buf.read_exact(len as usize));
       let keyspace = String::from_utf8(string_bytes).unwrap();
 
       let len = try!(buf.read_be_u16());
-      let string_bytes = try!(buf.read_exact(len as uint));
+      let string_bytes = try!(buf.read_exact(len as usize));
       let table = String::from_utf8(string_bytes).unwrap();
 
       println!("The flags are {}, and column count is {}", flags, column_count);
@@ -220,11 +220,11 @@ fn read_result(buf: &mut MemReader) -> IoResult<Response> {
 
       for _ in range(0, column_count) {
         let len = try!(buf.read_be_u16());
-        let string_bytes = try!(buf.read_exact(len as uint));
+        let string_bytes = try!(buf.read_exact(len as usize));
         let name = String::from_utf8(string_bytes).unwrap();
         let col_type = try!(buf.read_be_u16());
         let spec = ColumnSpec { name: name, col_type: col_type };
-        println!("Found spec: {}", spec);
+        println!("Found spec: {:?}", spec);
         column_specs.push(spec);
       }
 
@@ -247,12 +247,12 @@ fn read_result(buf: &mut MemReader) -> IoResult<Response> {
               Column::CqlInt(val)
             },
             _ => {
-              let val_bytes = try!(buf.read_exact(len as uint));
+              let val_bytes = try!(buf.read_exact(len as usize));
               let name = String::from_utf8(val_bytes).unwrap();
               Column::CqlString(name)
             }
           };
-          println!("Found col_val: {}", col_val);
+          println!("Found col_val: {:?}", col_val);
           columns.insert(col_spec.name.clone(), col_val);
         }
         rows.push(Row { columns: columns});
@@ -261,7 +261,7 @@ fn read_result(buf: &mut MemReader) -> IoResult<Response> {
     },
     3 => {
       let len = try!(buf.read_be_u16());
-      let string_bytes = try!(buf.read_exact(len as uint));
+      let string_bytes = try!(buf.read_exact(len as usize));
       let name = String::from_utf8(string_bytes).unwrap();
       ResultBody::SetKeyspace(name)
     },
@@ -269,15 +269,15 @@ fn read_result(buf: &mut MemReader) -> IoResult<Response> {
     5 => {
       // dedup this - map over range?
       let len = try!(buf.read_be_u16());
-      let string_bytes = try!(buf.read_exact(len as uint));
+      let string_bytes = try!(buf.read_exact(len as usize));
       let change = String::from_utf8(string_bytes).unwrap();
 
       let len = try!(buf.read_be_u16());
-      let string_bytes = try!(buf.read_exact(len as uint));
+      let string_bytes = try!(buf.read_exact(len as usize));
       let keyspace = String::from_utf8(string_bytes).unwrap();
 
       let len = try!(buf.read_be_u16());
-      let string_bytes = try!(buf.read_exact(len as uint));
+      let string_bytes = try!(buf.read_exact(len as usize));
       let table = String::from_utf8(string_bytes).unwrap();
       ResultBody::SchemaChange(change, keyspace, table)
     },

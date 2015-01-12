@@ -53,7 +53,7 @@ pub fn connect(addr: String) -> io::IoResult<Client> {
       Result::Ok(cli)
     },
     _ => {
-      println!("Bad response - response was {}", msg);
+      println!("Bad response - response was {:?}", msg);
       Err(io::IoError {
         kind: io::ConnectionFailed,
         desc: "Invalid response after startup",
