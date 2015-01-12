@@ -69,7 +69,7 @@ fn connect_and_query() {
   let mut client = connect("127.0.0.1:9042".to_string()).unwrap();
 
   let result = client.query("DROP KEYSPACE IF EXISTS testing".to_string(), Consistency::Quorum);
-  println!("Result of DROP KEYSPACE was {}", result);
+  println!("Result of DROP KEYSPACE was {:?}", result);
 
   let query = "CREATE KEYSPACE testing
                WITH replication = {
@@ -77,10 +77,10 @@ fn connect_and_query() {
                  'replication_factor' : 1
                }".to_string();
   let result = client.query(query, Consistency::Quorum);
-  println!("Result of CREATE KEYSPACE was {}", result);
+  println!("Result of CREATE KEYSPACE was {:?}", result);
 
   let result = client.query("USE testing".to_string(), Consistency::Quorum);
-  println!("Result of USE was {}", result);
+  println!("Result of USE was {:?}", result);
 
   let query = "CREATE TABLE users (
     user_id varchar PRIMARY KEY,
@@ -91,13 +91,13 @@ fn connect_and_query() {
     )".to_string();
 
   let result = client.query(query, Consistency::Quorum);
-  println!("Result of CREATE TABLE was {}", result);
+  println!("Result of CREATE TABLE was {:?}", result);
 
   let query = "INSERT INTO users (user_id, first, last, age, height)
                VALUES ('jsmith', 'John', 'Smith', 42, 12.1);".to_string();
   let result = client.query(query, Consistency::Quorum);
-  println!("Result of INSERT was {}", result);
+  println!("Result of INSERT was {:?}", result);
 
   let result = client.query("SELECT * FROM users".to_string(), Consistency::Quorum);
-  println!("Result of SELECT was {}", result);
+  println!("Result of SELECT was {:?}", result);
 }
